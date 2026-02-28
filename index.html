@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Label Printer — 2×1</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #0e0f11;
+    --surface: #17181c;
+    --surface2: #1e2025;
+    --border: #2a2c33;
+    --text: #e8e9ec;
+    --text2: #8b8d97;
+    --accent: #f59e0b;
+    --accent2: #fbbf24;
+    --accent-dim: rgba(245,158,11,0.12);
+    --danger: #ef4444;
+    --success: #22c55e;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  .app-header {
+    padding: 32px 40px 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .app-header .icon {
+    width: 42px; height: 42px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: grid; place-items: center;
+    font-size: 20px;
+    box-shadow: 0 0 24px rgba(245,158,11,0.25);
+  }
+
+  .app-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .app-header h1 span {
+    color: var(--text2);
+    font-weight: 300;
+    margin-left: 6px;
+    font-size: 15px;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 40px 60px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text2);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title::before {
+    content: '';
+    width: 3px; height: 14px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* Form */
+  .form-group {
+    margin-bottom: 18px;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #555;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+  }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .toggle-row:last-child { border-bottom: none; }
+
+  .toggle-label {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .toggle-desc {
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+
+  .toggle {
+    position: relative;
+    width: 44px; height: 24px;
+    cursor: pointer;
+  }
+
+  .toggle input {
+    opacity: 0; width: 0; height: 0; position: absolute;
+  }
+
+  .toggle .slider {
+    position: absolute; inset: 0;
+    background: var(--border);
+    border-radius: 12px;
+    transition: 0.25s;
+    border: none;
+  }
+
+  .toggle .slider::before {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    left: 3px; top: 3px;
+    background: var(--text);
+    border-radius: 50%;
+    transition: 0.25s;
+  }
+
+  .toggle input:checked + .slider {
+    background: var(--accent);
+  }
+
+  .toggle input:checked + .slider::before {
+    transform: translateX(20px);
+    background: var(--bg);
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    box-shadow: 0 2px 12px rgba(245,158,11,0.3);
+  }
+
+  .btn-primary:hover {
+    background: var(--accent2);
+    box-shadow: 0 4px 20px rgba(245,158,11,0.4);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    background: var(--border);
+  }
+
+  .btn-danger {
+    background: rgba(239,68,68,0.12);
+    color: var(--danger);
+    border: 1px solid rgba(239,68,68,0.25);
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  /* Preview */
+  .preview-area {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    min-height: 200px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    align-items: flex-start;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  .preview-area::-webkit-scrollbar { width: 6px; }
+  .preview-area::-webkit-scrollbar-track { background: transparent; }
+  .preview-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .label-preview {
+    width: 192px;
+    height: 96px;
+    background: white;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #111;
+    font-family: 'JetBrains Mono', monospace;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .label-preview .label-prefix {
+    font-size: 9px;
+    font-weight: 400;
+    color: #666;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 0.5px;
+    margin-bottom: 1px;
+  }
+
+  .label-preview .label-number {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .label-preview .label-suffix {
+    font-size: 8px;
+    font-weight: 400;
+    color: #888;
+    font-family: 'DM Sans', sans-serif;
+    margin-top: 3px;
+  }
+
+  .label-preview .label-business {
+    font-size: 7px;
+    color: #aaa;
+    position: absolute;
+    bottom: 4px;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+
+  .preview-info {
+    width: 100%;
+    text-align: center;
+    color: var(--text2);
+    font-size: 13px;
+    padding: 20px 0;
+  }
+
+  .stat-bar {
+    display: flex;
+    gap: 24px;
+    padding: 14px 0 4px;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 2px;
+  }
+
+  /* Font size selector */
+  .font-size-group {
+    display: flex;
+    gap: 6px;
+  }
+
+  .font-size-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .font-size-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .font-size-btn:hover:not(.active) {
+    border-color: var(--text2);
+  }
+
+  /* Loading overlay */
+  .generating {
+    position: fixed;
+    inset: 0;
+    background: rgba(14,15,17,0.85);
+    display: none;
+    place-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+  }
+
+  .generating.active {
+    display: grid;
+  }
+
+  .generating-inner {
+    text-align: center;
+  }
+
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .generating-text {
+    font-size: 15px;
+    color: var(--text2);
+  }
+
+  /* Print-specific styles */
+  @media print {
+    body * { visibility: hidden; }
+    .print-container, .print-container * { visibility: visible; }
+    .print-container {
+      position: absolute;
+      left: 0; top: 0;
+    }
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .container { padding: 20px 16px 40px; }
+    .app-header { padding: 20px 16px 0; }
+    .row, .row-3 { grid-template-columns: 1fr; }
+    .actions { flex-direction: column; }
+    .btn { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="icon">🏷️</div>
+  <h1>Label Printer <span>2×1 Thermal</span></h1>
+</div>
+
+<div class="container">
+
+  <!-- CONTENT SETUP -->
+  <div class="card">
+    <div class="card-title">Label Content</div>
+
+    <div class="form-group">
+      <label>Prefix Text (line above number)</label>
+      <input type="text" id="prefixText" placeholder='e.g. "Bag #" or "Order"' />
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label>Start Number</label>
+        <input type="number" id="startNum" value="1" min="0" />
+      </div>
+      <div class="form-group">
+        <label>End Number</label>
+        <input type="number" id="endNum" value="300" min="0" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Suffix Text (line below number)</label>
+      <input type="text" id="suffixText" placeholder='e.g. "of 300" or "— Wash & Fold"' />
+    </div>
+
+    <div class="form-group">
+      <label>Business Name (small, bottom of label)</label>
+      <input type="text" id="businessName" placeholder="e.g. Indian Harbour Laundry" />
+    </div>
+  </div>
+
+  <!-- FORMATTING -->
+  <div class="card">
+    <div class="card-title">Formatting</div>
+
+    <div class="row-3">
+      <div class="form-group">
+        <label>Number Padding</label>
+        <select id="padding">
+          <option value="0">None (1, 2, 3)</option>
+          <option value="2">2 digits (01, 02)</option>
+          <option value="3" selected>3 digits (001, 002)</option>
+          <option value="4">4 digits (0001, 0002)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Number Font Size</label>
+        <div class="font-size-group" style="margin-top:4px">
+          <button class="font-size-btn" data-size="small" onclick="setFontSize('small')">S</button>
+          <button class="font-size-btn active" data-size="medium" onclick="setFontSize('medium')">M</button>
+          <button class="font-size-btn" data-size="large" onclick="setFontSize('large')">L</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Step / Increment</label>
+        <input type="number" id="stepNum" value="1" min="1" />
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Bold Numbers</div>
+        <div class="toggle-desc">Make the number extra bold</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="boldNumbers" checked />
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Show Border</div>
+        <div class="toggle-desc">Thin border around each label</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="showBorder" />
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- PREVIEW & STATS -->
+  <div class="card">
+    <div class="card-title">Preview</div>
+    <div class="stat-bar">
+      <div class="stat">
+        <div class="stat-value" id="labelCount">300</div>
+        <div class="stat-label">Labels</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="pageCount">—</div>
+        <div class="stat-label">Pages (PDF)</div>
+      </div>
+    </div>
+    <div style="margin: 16px 0 12px; font-size: 12px; color: var(--text2);">Showing first labels — scroll for more</div>
+    <div class="preview-area" id="previewArea">
+      <div class="preview-info">Configure your labels above and click Generate</div>
+    </div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="actions">
+    <button class="btn btn-primary" onclick="generatePreview()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      Generate Preview
+    </button>
+    <button class="btn btn-primary" onclick="downloadPDF()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      Download PDF
+    </button>
+    <button class="btn btn-secondary" onclick="printDirect()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print Direct
+    </button>
+    <button class="btn btn-danger" onclick="clearAll()">Clear</button>
+  </div>
+</div>
+
+<!-- Loading overlay -->
+<div class="generating" id="generating">
+  <div class="generating-inner">
+    <div class="spinner"></div>
+    <div class="generating-text" id="genText">Generating labels...</div>
+  </div>
+</div>
+
+<!-- Hidden print container -->
+<div class="print-container" id="printContainer" style="display:none;"></div>
+
+<script>
+const { jsPDF } = window.jspdf;
+
+let currentFontSize = 'medium';
+
+function setFontSize(size) {
+  currentFontSize = size;
+  document.querySelectorAll('.font-size-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.size === size);
+  });
+  generatePreview();
+}
+
+function getConfig() {
+  const start = parseInt(document.getElementById('startNum').value) || 0;
+  const end = parseInt(document.getElementById('endNum').value) || 0;
+  const step = parseInt(document.getElementById('stepNum').value) || 1;
+  const padding = parseInt(document.getElementById('padding').value);
+  const prefix = document.getElementById('prefixText').value.trim();
+  const suffix = document.getElementById('suffixText').value.trim();
+  const business = document.getElementById('businessName').value.trim();
+  const bold = document.getElementById('boldNumbers').checked;
+  const border = document.getElementById('showBorder').checked;
+
+  const numbers = [];
+  if (start <= end) {
+    for (let i = start; i <= end; i += step) numbers.push(i);
+  } else {
+    for (let i = start; i >= end; i -= step) numbers.push(i);
+  }
+
+  return { numbers, padding, prefix, suffix, business, bold, border, fontSize: currentFontSize };
+}
+
+function formatNum(n, padding) {
+  if (padding === 0) return String(n);
+  return String(n).padStart(padding, '0');
+}
+
+function generatePreview() {
+  const cfg = getConfig();
+  const area = document.getElementById('previewArea');
+  area.innerHTML = '';
+
+  const maxPreview = Math.min(cfg.numbers.length, 50);
+
+  document.getElementById('labelCount').textContent = cfg.numbers.length;
+  document.getElementById('pageCount').textContent = cfg.numbers.length;
+
+  if (cfg.numbers.length === 0) {
+    area.innerHTML = '<div class="preview-info">No labels to generate. Check your start/end numbers.</div>';
+    return;
+  }
+
+  const numFontSize = { small: '22px', medium: '28px', large: '36px' }[cfg.fontSize];
+
+  for (let i = 0; i < maxPreview; i++) {
+    const num = cfg.numbers[i];
+    const el = document.createElement('div');
+    el.className = 'label-preview';
+    if (cfg.border) el.style.border = '1px solid #ccc';
+
+    let html = '';
+    if (cfg.prefix) html += `<div class="label-prefix">${escHtml(cfg.prefix)}</div>`;
+    html += `<div class="label-number" style="font-size:${numFontSize};font-weight:${cfg.bold ? 700 : 500}">${formatNum(num, cfg.padding)}</div>`;
+    if (cfg.suffix) html += `<div class="label-suffix">${escHtml(cfg.suffix)}</div>`;
+    if (cfg.business) html += `<div class="label-business">${escHtml(cfg.business)}</div>`;
+    el.innerHTML = html;
+    area.appendChild(el);
+  }
+
+  if (cfg.numbers.length > maxPreview) {
+    const more = document.createElement('div');
+    more.className = 'preview-info';
+    more.textContent = `+ ${cfg.numbers.length - maxPreview} more labels...`;
+    area.appendChild(more);
+  }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function downloadPDF() {
+  const cfg = getConfig();
+  if (cfg.numbers.length === 0) return alert('No labels to generate.');
+
+  showLoading('Generating PDF...');
+
+  // Use setTimeout to allow UI to update
+  await new Promise(r => setTimeout(r, 50));
+
+  try {
+    // Each page is one 2x1 label
+    const labelW = 2; // inches
+    const labelH = 1; // inches
+
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'in', format: [labelH, labelW] });
+
+    const numFontPt = { small: 18, medium: 24, large: 32 }[cfg.fontSize];
+
+    for (let i = 0; i < cfg.numbers.length; i++) {
+      if (i > 0) doc.addPage([labelH, labelW], 'landscape');
+
+      const cx = labelW / 2;
+      const cy = labelH / 2;
+      const numStr = formatNum(cfg.numbers[i], cfg.padding);
+
+      // Border
+      if (cfg.border) {
+        doc.setDrawColor(180);
+        doc.setLineWidth(0.005);
+        doc.rect(0.02, 0.02, labelW - 0.04, labelH - 0.04);
+      }
+
+      const hasPrefix = !!cfg.prefix;
+      const hasSuffix = !!cfg.suffix;
+      const hasBusiness = !!cfg.business;
+
+      // Calculate vertical layout
+      const numH = numFontPt / 72;
+      let totalH = numH;
+      if (hasPrefix) totalH += 0.13;
+      if (hasSuffix) totalH += 0.12;
+
+      let curY = cy - totalH / 2 + numH * 0.6;
+      if (hasPrefix) curY += 0.05;
+
+      // Prefix
+      if (hasPrefix) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(100);
+        doc.text(cfg.prefix, cx, curY - numH * 0.5 - 0.04, { align: 'center' });
+      }
+
+      // Number
+      doc.setFont('helvetica', cfg.bold ? 'bold' : 'normal');
+      doc.setFontSize(numFontPt);
+      doc.setTextColor(17);
+      doc.text(numStr, cx, curY, { align: 'center' });
+
+      // Suffix
+      if (hasSuffix) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6);
+        doc.setTextColor(120);
+        doc.text(cfg.suffix, cx, curY + 0.14, { align: 'center' });
+      }
+
+      // Business name at bottom
+      if (hasBusiness) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(5);
+        doc.setTextColor(150);
+        doc.text(cfg.business.toUpperCase(), cx, labelH - 0.06, { align: 'center' });
+      }
+
+      // Progress update
+      if (i % 200 === 0) {
+        document.getElementById('genText').textContent = `Generating label ${i + 1} of ${cfg.numbers.length}...`;
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+
+    doc.save('labels-2x1.pdf');
+  } catch (e) {
+    console.error(e);
+    alert('Error generating PDF: ' + e.message);
+  }
+
+  hideLoading();
+}
+
+function printDirect() {
+  const cfg = getConfig();
+  if (cfg.numbers.length === 0) return alert('No labels to generate.');
+
+  const numFontSize = { small: '22pt', medium: '28pt', large: '36pt' }[cfg.fontSize];
+
+  let html = `
+    <html><head><style>
+      @page { size: 2in 1in; margin: 0; }
+      body { margin: 0; padding: 0; }
+      .label {
+        width: 2in; height: 1in;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        page-break-after: always;
+        font-family: 'Arial', sans-serif;
+        overflow: hidden;
+        box-sizing: border-box;
+        ${cfg.border ? 'border: 0.5pt solid #ccc;' : ''}
+      }
+      .label:last-child { page-break-after: auto; }
+      .prefix { font-size: 7pt; color: #666; margin-bottom: 1pt; }
+      .num { font-size: ${numFontSize}; font-weight: ${cfg.bold ? 700 : 400}; line-height: 1; color: #111; font-family: 'Courier New', monospace; }
+      .suffix { font-size: 6pt; color: #888; margin-top: 2pt; }
+      .business { font-size: 5pt; color: #aaa; text-transform: uppercase; letter-spacing: 0.5pt; position: absolute; bottom: 2pt; }
+      .label { position: relative; }
+    </style></head><body>`;
+
+  for (const num of cfg.numbers) {
+    html += `<div class="label">`;
+    if (cfg.prefix) html += `<div class="prefix">${escHtml(cfg.prefix)}</div>`;
+    html += `<div class="num">${formatNum(num, cfg.padding)}</div>`;
+    if (cfg.suffix) html += `<div class="suffix">${escHtml(cfg.suffix)}</div>`;
+    if (cfg.business) html += `<div class="business">${escHtml(cfg.business)}</div>`;
+    html += `</div>`;
+  }
+
+  html += `</body></html>`;
+
+  const win = window.open('', '_blank', 'width=300,height=200');
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => {
+    win.focus();
+    win.print();
+  };
+}
+
+function clearAll() {
+  document.getElementById('prefixText').value = '';
+  document.getElementById('startNum').value = '1';
+  document.getElementById('endNum').value = '300';
+  document.getElementById('suffixText').value = '';
+  document.getElementById('businessName').value = '';
+  document.getElementById('stepNum').value = '1';
+  document.getElementById('padding').value = '3';
+  document.getElementById('boldNumbers').checked = true;
+  document.getElementById('showBorder').checked = false;
+  setFontSize('medium');
+  document.getElementById('previewArea').innerHTML = '<div class="preview-info">Configure your labels above and click Generate</div>';
+  document.getElementById('labelCount').textContent = '300';
+  document.getElementById('pageCount').textContent = '—';
+}
+
+function showLoading(text) {
+  document.getElementById('genText').textContent = text;
+  document.getElementById('generating').classList.add('active');
+}
+
+function hideLoading() {
+  document.getElementById('generating').classList.remove('active');
+}
+
+// Auto-update label count on input change
+['startNum', 'endNum', 'stepNum'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    const cfg = getConfig();
+    document.getElementById('labelCount').textContent = cfg.numbers.length;
+    document.getElementById('pageCount').textContent = cfg.numbers.length;
+  });
+});
+
+// Generate preview on load
+generatePreview();
+</script>
+</body>
+</html>
