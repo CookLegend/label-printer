@@ -708,48 +708,41 @@ async function downloadPDF() {
       const hasSuffix = !!cfg.suffix;
       const hasBusiness = !!cfg.business;
 
-      // Vertical layout — position from center of label
-      // jsPDF text() draws at the baseline, so text appears above the y coordinate
-      const prefixFontPt = { small: 11, medium: 14, large: 18 }[cfg.fontSize];
+      // Vertical layout using fixed positions on the 1-inch tall label
+      // jsPDF text() positions at the baseline (text renders above the Y)
+      const prefixFontPt = Math.round(numFontPt * 0.65);
 
       if (hasPrefix) {
-        // With prefix: shift both up so they're centered as a group
-        const prefixY = cy - 0.08;
-        const numY = prefixY + (prefixFontPt / 72) + 0.06 + (numFontPt / 72) * 0.7;
-
-        // Prefix — big and bold, same style as number
+        // Prefix in upper portion, number in lower portion
+        // Prefix baseline at 0.35in, number baseline at 0.78in
         doc.setFont('helvetica', cfg.bold ? 'bold' : 'normal');
         doc.setFontSize(prefixFontPt);
-        doc.setTextColor(17);
-        doc.text(cfg.prefix, cx, prefixY, { align: 'center' });
+        doc.setTextColor(0);
+        doc.text(cfg.prefix, cx, 0.35, { align: 'center' });
 
-        // Number
         doc.setFont('helvetica', cfg.bold ? 'bold' : 'normal');
         doc.setFontSize(numFontPt);
-        doc.setTextColor(17);
-        doc.text(numStr, cx, numY, { align: 'center' });
+        doc.setTextColor(0);
+        doc.text(numStr, cx, 0.78, { align: 'center' });
 
-        // Suffix
         if (hasSuffix) {
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(6);
           doc.setTextColor(120);
-          doc.text(cfg.suffix, cx, numY + 0.12, { align: 'center' });
+          doc.text(cfg.suffix, cx, 0.92, { align: 'center' });
         }
       } else {
-        // No prefix — center the number
-        const numY = cy + (numFontPt / 72) * 0.35;
-
+        // No prefix — center the number vertically
         doc.setFont('helvetica', cfg.bold ? 'bold' : 'normal');
         doc.setFontSize(numFontPt);
-        doc.setTextColor(17);
-        doc.text(numStr, cx, numY, { align: 'center' });
+        doc.setTextColor(0);
+        doc.text(numStr, cx, 0.6, { align: 'center' });
 
         if (hasSuffix) {
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(6);
           doc.setTextColor(120);
-          doc.text(cfg.suffix, cx, numY + 0.14, { align: 'center' });
+          doc.text(cfg.suffix, cx, 0.74, { align: 'center' });
         }
       }
 
