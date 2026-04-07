@@ -708,42 +708,49 @@ async function downloadPDF() {
       const hasSuffix = !!cfg.suffix;
       const hasBusiness = !!cfg.business;
 
-      // Calculate vertical layout
+      // Vertical layout — position from center of label
+      // jsPDF text() draws at the baseline, so text appears above the y coordinate
       const prefixFontPt = { small: 11, medium: 14, large: 18 }[cfg.fontSize];
-      const prefixH = hasPrefix ? prefixFontPt / 72 : 0;
-      const numH = numFontPt / 72;
-      const suffixH = hasSuffix ? 0.10 : 0;
-      const gapPrefixNum = hasPrefix ? 0.06 : 0;
-      const gapNumSuffix = hasSuffix ? 0.06 : 0;
-      const totalH = prefixH + gapPrefixNum + numH + gapNumSuffix + suffixH;
 
-      let curY = cy - totalH / 2;
-
-      // Prefix
       if (hasPrefix) {
+        // With prefix: shift both up so they're centered as a group
+        const prefixY = cy - 0.08;
+        const numY = prefixY + (prefixFontPt / 72) + 0.06 + (numFontPt / 72) * 0.7;
+
+        // Prefix — big and bold, same style as number
         doc.setFont('helvetica', cfg.bold ? 'bold' : 'normal');
         doc.setFontSize(prefixFontPt);
         doc.setTextColor(17);
-        curY += prefixH;
-        doc.text(cfg.prefix, cx, curY, { align: 'center' });
-        curY += gapPrefixNum;
-      }
+        doc.text(cfg.prefix, cx, prefixY, { align: 'center' });
 
-      // Number
-      doc.setFont('helvetica', cfg.bold ? 'bold' : 'normal');
-      doc.setFontSize(numFontPt);
-      doc.setTextColor(17);
-      curY += numH;
-      doc.text(numStr, cx, curY, { align: 'center' });
+        // Number
+        doc.setFont('helvetica', cfg.bold ? 'bold' : 'normal');
+        doc.setFontSize(numFontPt);
+        doc.setTextColor(17);
+        doc.text(numStr, cx, numY, { align: 'center' });
 
-      // Suffix
-      if (hasSuffix) {
-        curY += gapNumSuffix;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6);
-        doc.setTextColor(120);
-        curY += suffixH;
-        doc.text(cfg.suffix, cx, curY, { align: 'center' });
+        // Suffix
+        if (hasSuffix) {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(6);
+          doc.setTextColor(120);
+          doc.text(cfg.suffix, cx, numY + 0.12, { align: 'center' });
+        }
+      } else {
+        // No prefix — center the number
+        const numY = cy + (numFontPt / 72) * 0.35;
+
+        doc.setFont('helvetica', cfg.bold ? 'bold' : 'normal');
+        doc.setFontSize(numFontPt);
+        doc.setTextColor(17);
+        doc.text(numStr, cx, numY, { align: 'center' });
+
+        if (hasSuffix) {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(6);
+          doc.setTextColor(120);
+          doc.text(cfg.suffix, cx, numY + 0.14, { align: 'center' });
+        }
       }
 
       // Business name at bottom
