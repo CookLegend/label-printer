@@ -299,12 +299,13 @@
   }
 
   .label-preview .label-prefix {
-    font-size: 9px;
-    font-weight: 400;
-    color: #666;
-    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #111;
+    font-family: 'JetBrains Mono', monospace;
     letter-spacing: 0.5px;
-    margin-bottom: 1px;
+    margin-bottom: 2px;
+    line-height: 1;
   }
 
   .label-preview .label-number {
@@ -642,6 +643,7 @@ function generatePreview() {
   }
 
   const numFontSize = { small: '22px', medium: '28px', large: '36px' }[cfg.fontSize];
+  const prefixFontSize = { small: '13px', medium: '16px', large: '20px' }[cfg.fontSize];
 
   for (let i = 0; i < maxPreview; i++) {
     const num = cfg.numbers[i];
@@ -650,7 +652,7 @@ function generatePreview() {
     if (cfg.border) el.style.border = '1px solid #ccc';
 
     let html = '';
-    if (cfg.prefix) html += `<div class="label-prefix">${escHtml(cfg.prefix)}</div>`;
+    if (cfg.prefix) html += `<div class="label-prefix" style="font-size:${prefixFontSize};font-weight:${cfg.bold ? 700 : 600}">${escHtml(cfg.prefix)}</div>`;
     html += `<div class="label-number" style="font-size:${numFontSize};font-weight:${cfg.bold ? 700 : 500}">${formatNum(num, cfg.padding)}</div>`;
     if (cfg.suffix) html += `<div class="label-suffix">${escHtml(cfg.suffix)}</div>`;
     if (cfg.business) html += `<div class="label-business">${escHtml(cfg.business)}</div>`;
@@ -707,34 +709,41 @@ async function downloadPDF() {
       const hasBusiness = !!cfg.business;
 
       // Calculate vertical layout
+      const prefixFontPt = { small: 11, medium: 14, large: 18 }[cfg.fontSize];
+      const prefixH = hasPrefix ? prefixFontPt / 72 : 0;
       const numH = numFontPt / 72;
-      let totalH = numH;
-      if (hasPrefix) totalH += 0.13;
-      if (hasSuffix) totalH += 0.12;
+      const suffixH = hasSuffix ? 0.10 : 0;
+      const gapPrefixNum = hasPrefix ? 0.06 : 0;
+      const gapNumSuffix = hasSuffix ? 0.06 : 0;
+      const totalH = prefixH + gapPrefixNum + numH + gapNumSuffix + suffixH;
 
-      let curY = cy - totalH / 2 + numH * 0.6;
-      if (hasPrefix) curY += 0.05;
+      let curY = cy - totalH / 2;
 
       // Prefix
       if (hasPrefix) {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7);
-        doc.setTextColor(100);
-        doc.text(cfg.prefix, cx, curY - numH * 0.5 - 0.04, { align: 'center' });
+        doc.setFont('helvetica', cfg.bold ? 'bold' : 'normal');
+        doc.setFontSize(prefixFontPt);
+        doc.setTextColor(17);
+        curY += prefixH;
+        doc.text(cfg.prefix, cx, curY, { align: 'center' });
+        curY += gapPrefixNum;
       }
 
       // Number
       doc.setFont('helvetica', cfg.bold ? 'bold' : 'normal');
       doc.setFontSize(numFontPt);
       doc.setTextColor(17);
+      curY += numH;
       doc.text(numStr, cx, curY, { align: 'center' });
 
       // Suffix
       if (hasSuffix) {
+        curY += gapNumSuffix;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6);
         doc.setTextColor(120);
-        doc.text(cfg.suffix, cx, curY + 0.14, { align: 'center' });
+        curY += suffixH;
+        doc.text(cfg.suffix, cx, curY, { align: 'center' });
       }
 
       // Business name at bottom
@@ -782,7 +791,7 @@ function printDirect() {
         ${cfg.border ? 'border: 0.5pt solid #ccc;' : ''}
       }
       .label:last-child { page-break-after: auto; }
-      .prefix { font-size: 7pt; color: #666; margin-bottom: 1pt; }
+      .prefix { font-size: ${{ small: '13pt', medium: '16pt', large: '20pt' }[cfg.fontSize]}; font-weight: ${cfg.bold ? 700 : 600}; color: #111; margin-bottom: 2pt; line-height: 1; font-family: 'Courier New', monospace; }
       .num { font-size: ${numFontSize}; font-weight: ${cfg.bold ? 700 : 400}; line-height: 1; color: #111; font-family: 'Courier New', monospace; }
       .suffix { font-size: 6pt; color: #888; margin-top: 2pt; }
       .business { font-size: 5pt; color: #aaa; text-transform: uppercase; letter-spacing: 0.5pt; position: absolute; bottom: 2pt; }
